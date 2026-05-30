@@ -1,0 +1,132 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "srvcs-compare",
+    "description": "",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [],
+        "summary": "`GET /` — service identity (srvcs service standard).",
+        "operationId": "index",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Info"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [],
+        "summary": "`POST /` — compare `a` and `b`: `-1` if `a < b`, `1` if `a > b`, else `0`.",
+        "description": "This service does no comparison of its own. It asks `srvcs-lessthan` whether\n`a < b` and `srvcs-greaterthan` whether `a > b`, then reports `-1`, `1`, or\n`0`. Invalid operands are rejected by the leaf dependencies and the resulting\n`422` is forwarded unchanged.",
+        "operationId": "evaluate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "an operand is not a valid integer (forwarded)"
+          },
+          "500": {
+            "description": "unexpected internal error"
+          },
+          "503": {
+            "description": "a dependency is unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EvalRequest": {
+        "type": "object",
+        "required": [
+          "a",
+          "b"
+        ],
+        "properties": {
+          "a": {
+            "type": "object"
+          },
+          "b": {
+            "type": "object"
+          }
+        }
+      },
+      "Info": {
+        "type": "object",
+        "required": [
+          "service",
+          "concern",
+          "depends_on"
+        ],
+        "properties": {
+          "concern": {
+            "type": "string"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "service": {
+            "type": "string"
+          }
+        }
+      },
+      "ResultResponse": {
+        "type": "object",
+        "required": [
+          "a",
+          "b",
+          "result"
+        ],
+        "properties": {
+          "a": {
+            "type": "object"
+          },
+          "b": {
+            "type": "object"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int64",
+            "description": "`-1`, `0`, or `1`."
+          }
+        }
+      }
+    }
+  }
+}
