@@ -1,57 +1,69 @@
 # srvcs-compare
 
-The comparison orchestrator of the srvcs.cloud distributed standard library.
+## Name
 
-Its single concern: **how do `a` and `b` order — `-1`, `0`, or `1`?** It does no
-comparison of its own. It asks
-[`srvcs-lessthan`](https://github.com/srvcs/lessthan) whether `a < b` and
-[`srvcs-greaterthan`](https://github.com/srvcs/greaterthan) whether `a > b`, and
-reports:
+| Field | Value |
+| --- | --- |
+| Service | `srvcs-compare` |
+| Slug | `compare` |
+| Repository | `srvcs/compare` |
+| Package | `srvcs-compare` |
+| Kind | `orchestrator` |
 
-- `-1` if `a < b`,
-- `1` if `a > b`,
-- `0` otherwise.
+## Function
+
+comparison: -1, 0, or 1 ordering of a vs b
+
+## Dependencies
+
+| Dependency | Repository |
+| --- | --- |
+| `srvcs-lessthan` | [srvcs/lessthan](https://github.com/srvcs/lessthan) |
+| `srvcs-greaterthan` | [srvcs/greaterthan](https://github.com/srvcs/greaterthan) |
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/` | Service identity, concern, and dependency list |
-| `POST` | `/` | Compare `a` and `b`: `-1`, `0`, or `1` |
-| `GET` | `/healthz` `/readyz` `/metrics` `/openapi.json` | srvcs service standard surface |
+| `GET` | `/` | Service identity |
+| `POST` | `/` | Evaluate the service function |
+| `GET` | `/healthz` | Liveness probe |
+| `GET` | `/readyz` | Readiness probe |
+| `GET` | `/metrics` | Prometheus metrics |
+| `GET` | `/openapi.json` | OpenAPI document |
 
-```sh
-curl -s -X POST localhost:8080/ -H 'content-type: application/json' -d '{"a": 3, "b": 5}'
-# {"a":3,"b":5,"result":-1}
-```
+## Inputs
 
-Examples: `compare(3, 5) = -1`, `compare(5, 5) = 0`, `compare(7, 2) = 1`.
+| Name | Type | Required |
+| --- | --- | --- |
+| `a` | `json` | yes |
+| `b` | `json` | yes |
 
-Responses:
+## Outputs
 
-- `200 {"a": a, "b": b, "result": -1 | 0 | 1}` — evaluated.
-- `422` — invalid input, forwarded from a leaf dependency.
-- `503` — a dependency is unavailable.
-
-## Dependencies
-
-- [`srvcs-lessthan`](https://github.com/srvcs/lessthan)
-- [`srvcs-greaterthan`](https://github.com/srvcs/greaterthan)
-
-This service does not depend on `srvcs-isnumber` directly — input validation
-propagates from the leaf dependencies via their `422` responses.
+| Name | Type |
+| --- | --- |
+| `a` | `json` |
+| `b` | `json` |
+| `result` | `integer` |
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `SRVCS_BIND_ADDR` | `0.0.0.0:8080` | Bind address |
-| `SRVCS_LESSTHAN_URL` | `http://127.0.0.1:8087` | Base URL of `srvcs-lessthan` |
-| `SRVCS_GREATERTHAN_URL` | `http://127.0.0.1:8088` | Base URL of `srvcs-greaterthan` |
 | `SRVCS_ENV` | `development` | Environment label for logs |
 | `RUST_LOG` | `info,tower_http=info` | Tracing filter |
+| `SRVCS_GREATERTHAN_URL` | `http://127.0.0.1:8088` | Base URL for srvcs-greaterthan |
+| `SRVCS_LESSTHAN_URL` | `http://127.0.0.1:8087` | Base URL for srvcs-lessthan |
 
-## Local checks
+## Error Behavior
+
+- `422` means the request could not be evaluated for the documented input shape.
+- `503` means a required dependency was unavailable or returned an unexpected response.
+- Dependency validation errors are forwarded when this service delegates validation.
+
+## Local Checks
 
 ```sh
 cargo fmt --check
@@ -59,12 +71,8 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-Orchestration tests stand up computing mock `srvcs-lessthan` and
-`srvcs-greaterthan` services in-process — they compute real comparisons, so the
-composition is genuinely exercised against `compare(3,5)=-1`, `compare(5,5)=0`,
-and `compare(7,2)=1` — plus a degraded case where a dependency is unreachable (a
-`503`). See [`srvcs/platform`](https://github.com/srvcs/platform) for the shared
-standard.
+See the [srvcs service standard](https://github.com/srvcs/platform/blob/main/STANDARD.md) for the full operational contract.
 
-> Note: the `cargoHash` in `flake.nix` is inherited from the template and must be
-> refreshed with a `nix build` before the Nix gates pass.
+## Metadata
+
+Machine-readable service metadata lives in `srvcs.yaml`. Keep it aligned with this README when the service contract changes.
